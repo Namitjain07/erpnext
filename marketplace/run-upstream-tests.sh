@@ -88,5 +88,30 @@ frappe.destroy()
 PYTHON
 )
 
-echo "==> running the upstream suite"
-bench --site "$SITE" run-tests --app ecommerce_integrations --skip-before-tests
+# One upstream test, Unicommerce's test_create_customer, only passes if nothing has created and committed the customer
+# "Ramesh Suresh" yet: it asks for "the last customer created" and gets someone else's otherwise. The full suite runs
+# it too late, so that module goes first and the rest follow one module at a time. Every test still runs, in one
+# database, and the script fails if any of them does.
+FIRST="ecommerce_integrations.unicommerce.tests.test_customer"
+MODULES="$FIRST
+$(cd apps/ecommerce_integrations && find ecommerce_integrations -name 'test_*.py' | sort | sed -e 's/\.py$//' -e 's#/#.#g' | grep -vx "$FIRST")"
+
+echo "==> running the upstream suite, one module at a time"
+failed=()
+total=0
+for module in $MODULES; do
+	output="$(bench --site "$SITE" run-tests --app ecommerce_integrations --skip-before-tests --module "$module" 2>&1 | tr '\r' '\n')" || true
+	summary="$(grep -E '^(Ran|OK|FAILED)' <<<"$output" | tr '\n' ' ')"
+	ran="$(grep -oE '^Ran [0-9]+' <<<"$output" | grep -oE '[0-9]+' || echo 0)"
+	total=$((total + ran))
+	if grep -q '^OK' <<<"$output"; then
+		echo "  ok      ${module#ecommerce_integrations.}: $summary"
+	else
+		echo "  FAILED  ${module#ecommerce_integrations.}: $summary"
+		grep -E '^ ?(ERROR|FAIL)  |AssertionError' <<<"$output" | cut -c1-160 | sed 's/^/            /'
+		failed+=("$module")
+	fi
+done
+
+echo "==> $total tests run in $(wc -w <<<"$MODULES") modules, ${#failed[@]} modules failed"
+[ "${#failed[@]}" -eq 0 ]

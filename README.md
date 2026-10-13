@@ -59,7 +59,7 @@ Running a business is a complex task - handling invoices, tracking stock, managi
 
 ## Marketplace Connectors
 
-This fork adds [`marketplace/`](./marketplace/README.md), which installs the Shopify, Amazon and Unicommerce (warehouse management) connectors from [`ecommerce_integrations`](https://github.com/frappe/ecommerce_integrations), and [`flipkart_integration/`](./flipkart_integration/README.md), a Flipkart connector (orders in, stock out) built on top of them.
+This fork adds [`marketplace/`](./marketplace/README.md), which installs Shopify, Amazon and Unicommerce (`ecommerce_integrations`), Shiprocket and AfterShip shipping labels (`bwh_shipping`) and Tally (`tally_erpnext`, behind an access guard) from pinned git submodules, and [`flipkart_integration/`](./flipkart_integration/README.md), a Flipkart connector (orders in, stock out). All of them work with multiple warehouses. Clone with `--recurse-submodules`.
 
 ## Production Setup
 

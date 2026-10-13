@@ -1,0 +1,9 @@
+[submodule "third_party/ecommerce_integrations"]
+	path = third_party/ecommerce_integrations
+	url = https://github.com/frappe/ecommerce_integrations
+[submodule "third_party/bwh_shipping"]
+	path = third_party/bwh_shipping
+	url = https://github.com/bwhtech/bwh_shipping
+[submodule "third_party/tally_erpnext"]
+	path = third_party/tally_erpnext
+	url = https://github.com/svnix-solutions/tally_erpnext

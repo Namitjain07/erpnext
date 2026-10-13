@@ -30,9 +30,15 @@ class FlipkartSyncTestCase(IntegrationTestCase):
 			patcher.start()
 			self.addCleanup(patcher.stop)
 
-	def make_warehouse(self, name: str) -> str:
+	def make_warehouse(self, name: str, parent: str | None = None, is_group: int = 0) -> str:
 		warehouse = frappe.get_doc(
-			{"doctype": "Warehouse", "warehouse_name": name, "company": COMPANY}
+			{
+				"doctype": "Warehouse",
+				"warehouse_name": name,
+				"company": COMPANY,
+				"parent_warehouse": parent,
+				"is_group": is_group,
+			}
 		).insert()
 		frappe.db.commit()
 		return warehouse.name
@@ -52,7 +58,8 @@ class FlipkartSyncTestCase(IntegrationTestCase):
 		frappe.db.commit()
 		return sku
 
-	def configure(self, **overrides):
+	def configure(self, mapping: list[tuple[str, str]] | None = None, **overrides):
+		"""mapping is a list of (flipkart location id, erpnext warehouse); one row for the test warehouse by default."""
 		settings = frappe.get_doc("Flipkart Settings")
 		settings.update(
 			{
@@ -77,10 +84,11 @@ class FlipkartSyncTestCase(IntegrationTestCase):
 			"warehouse_mapping",
 			[
 				{
-					"flipkart_location_id": LOCATION,
-					"flipkart_location_name": "Test location",
-					"erpnext_warehouse": self.warehouse,
+					"flipkart_location_id": location,
+					"flipkart_location_name": location,
+					"erpnext_warehouse": warehouse,
 				}
+				for location, warehouse in (mapping or [(LOCATION, self.warehouse)])
 			],
 		)
 		settings.save()
@@ -536,3 +544,91 @@ class TestInventorySync(FlipkartSyncTestCase):
 		inventory.update_inventory_on_flipkart(force=True)
 
 		self.assertEqual(self.sent_for(sku), [])
+
+
+class TestMultipleWarehouses(FlipkartSyncTestCase):
+	def setUp(self):
+		super().setUp()
+		self.warehouse_b = self.make_warehouse(unique("FK Stores B"))
+		self.sku = self.make_item()
+		self.fsn = unique("FSNMULTI")
+		self.fake.listings.append(
+			{"listingId": "L", "productId": self.fsn, "sku": self.sku, "product_name": self.sku}
+		)
+		self.configure(mapping=[("LOC-A", self.warehouse), ("LOC-B", self.warehouse_b)])
+		product.sync_listings()
+
+	def stock(self, warehouse: str, qty: float, source: str | None = None):
+		if source:
+			make_stock_entry(item_code=self.sku, source=source, target=warehouse, qty=qty, company=COMPANY)
+		else:
+			make_stock_entry(item_code=self.sku, target=warehouse, qty=qty, rate=100, company=COMPANY)
+		frappe.db.commit()
+
+	def sent(self) -> list[dict[str, int]]:
+		"""One {location: quantity} dict per push that included the SKU."""
+		return [
+			{loc["id"]: loc["inventory"] for loc in call[self.sku]["locations"]}
+			for call in self.fake.inventory_calls
+			if self.sku in call
+		]
+
+	def test_each_warehouse_is_sent_to_its_own_location(self):
+		self.stock(self.warehouse, 10)
+		self.stock(self.warehouse_b, 4)
+
+		inventory.update_inventory_on_flipkart(force=True)
+
+		self.assertEqual(self.sent(), [{"LOC-A": 10, "LOC-B": 4}])
+
+	def test_only_the_warehouse_that_changed_is_sent_again(self):
+		self.stock(self.warehouse, 10)
+		self.stock(self.warehouse_b, 4)
+		inventory.update_inventory_on_flipkart(force=True)
+
+		self.stock(self.warehouse_b, 6)
+		inventory.update_inventory_on_flipkart(force=True)
+
+		self.assertEqual(self.sent()[-1], {"LOC-B": 10})
+
+	def test_a_transfer_between_warehouses_updates_both_locations(self):
+		self.stock(self.warehouse, 10)
+		inventory.update_inventory_on_flipkart(force=True)
+
+		self.stock(self.warehouse_b, 3, source=self.warehouse)
+		inventory.update_inventory_on_flipkart(force=True)
+
+		self.assertEqual(self.sent()[-1], {"LOC-A": 7, "LOC-B": 3})
+
+	def test_an_order_reserves_stock_in_the_warehouse_of_its_location(self):
+		self.stock(self.warehouse, 10)
+		self.stock(self.warehouse_b, 10)
+		from_b = self.add_shipment(items=[make_order_item(sku=self.sku, quantity=4)], location_id="LOC-B")
+
+		self.sync_orders()
+		inventory.update_inventory_on_flipkart(force=True)
+
+		self.assertEqual(self.sales_order_for(from_b["shipmentId"]).items[0].warehouse, self.warehouse_b)
+		self.assertEqual(self.sent()[-1], {"LOC-A": 10, "LOC-B": 6})
+
+	def test_a_group_warehouse_is_the_sum_of_its_children(self):
+		group = self.make_warehouse(unique("FK Group"), is_group=1)
+		child_1 = self.make_warehouse(unique("FK Child 1"), parent=group)
+		child_2 = self.make_warehouse(unique("FK Child 2"), parent=group)
+		self.configure(mapping=[("LOC-G", group)], default_warehouse=child_1)
+		self.stock(child_1, 5)
+		self.stock(child_2, 8)
+
+		inventory.update_inventory_on_flipkart(force=True)
+
+		self.assertEqual(self.sent(), [{"LOC-G": 13}])
+
+	def test_orders_for_a_group_location_are_booked_in_the_default_leaf_warehouse(self):
+		group = self.make_warehouse(unique("FK Group"), is_group=1)
+		leaf = self.make_warehouse(unique("FK Leaf"), parent=group)
+		self.configure(mapping=[("LOC-G", group)], default_warehouse=leaf)
+		shipment = self.add_shipment(items=[make_order_item(sku=self.sku)], location_id="LOC-G")
+
+		self.sync_orders()
+
+		self.assertEqual(self.sales_order_for(shipment["shipmentId"]).items[0].warehouse, leaf)

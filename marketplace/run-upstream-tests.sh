@@ -51,14 +51,38 @@ bench new-site "$SITE" --mariadb-root-password "$MARIADB_ROOT_PASSWORD" --admin-
 bench --site "$SITE" set-config allow_tests true
 
 echo "==> preparing the database"
-bench --site "$SITE" execute ecommerce_integrations.utils.before_test.before_tests
-bench --site "$SITE" execute frappe.db.set_single_value --args '["Selling Settings", "allow_multiple_items", 1]'
-for pair in "INR USD 0.012" "USD INR 83"; do
-	set -- $pair
-	bench --site "$SITE" execute frappe.client.insert --kwargs \
-		"{\"doc\": {\"doctype\": \"Currency Exchange\", \"date\": \"2000-01-01\", \"from_currency\": \"$1\", \"to_currency\": \"$2\", \"exchange_rate\": $3, \"for_buying\": 1, \"for_selling\": 1}}"
-done
-bench --site "$SITE" execute frappe.tests.utils.make_test_records --args '["Unicommerce Channel"]' --kwargs '{"commit": True}'
+# Test mode matters: upstream's bootstrap creates a user with the password "test", which Frappe only accepts in tests.
+"$BENCH_PATH/env/bin/python" -I - "$BENCH_PATH/sites" "$SITE" <<'PYTHON'
+import sys
+
+import frappe
+
+sites_path, site = sys.argv[1:3]
+frappe.init(site=site, sites_path=sites_path)
+frappe.connect()
+frappe.flags.in_test = True
+
+from ecommerce_integrations.utils.before_test import before_tests
+from frappe.tests.utils import make_test_records
+
+before_tests()
+frappe.db.set_single_value("Selling Settings", "allow_multiple_items", 1)
+for from_currency, to_currency, rate in (("INR", "USD", 0.012), ("USD", "INR", 83)):
+	frappe.get_doc(
+		{
+			"doctype": "Currency Exchange",
+			"date": "2000-01-01",
+			"from_currency": from_currency,
+			"to_currency": to_currency,
+			"exchange_rate": rate,
+			"for_buying": 1,
+			"for_selling": 1,
+		}
+	).insert(ignore_permissions=True)
+make_test_records("Unicommerce Channel", commit=True)
+frappe.db.commit()
+frappe.destroy()
+PYTHON
 
 echo "==> running the upstream suite"
 bench --site "$SITE" run-tests --app ecommerce_integrations --skip-before-tests

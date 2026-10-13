@@ -51,7 +51,8 @@ bench new-site "$SITE" --mariadb-root-password "$MARIADB_ROOT_PASSWORD" --admin-
 bench --site "$SITE" set-config allow_tests true
 
 echo "==> preparing the database"
-# Test mode matters: upstream's bootstrap creates a user with the password "test", which Frappe only accepts in tests.
+# Test mode matters: upstream's bootstrap creates a user with the password "test", which Frappe only accepts in tests
+# (it reads frappe.in_test, which the test runner sets along with frappe.flags.in_test).
 # Frappe finds its log folder relative to the working directory, which has to be sites/.
 (cd "$BENCH_PATH/sites" && "$BENCH_PATH/env/bin/python" -I - . "$SITE" <<'PYTHON'
 import sys
@@ -61,6 +62,7 @@ import frappe
 sites_path, site = sys.argv[1:3]
 frappe.init(site=site, sites_path=sites_path)
 frappe.connect()
+frappe.in_test = True
 frappe.flags.in_test = True
 
 from ecommerce_integrations.utils.before_test import before_tests

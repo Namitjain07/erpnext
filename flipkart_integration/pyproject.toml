@@ -1,0 +1,38 @@
+[project]
+name = "flipkart_integration"
+description = "Flipkart Marketplace connector for ERPNext: orders in, stock out"
+authors = [
+    { name = "Flipkart Integration contributors" }
+]
+readme = "README.md"
+requires-python = ">=3.14"
+license = { text = "GNU General Public License (v3)" }
+dynamic = ["version"]
+
+dependencies = [
+    "requests",
+]
+
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.bench.frappe-dependencies]
+frappe = ">=17.0.0-dev,<18.0.0"
+erpnext = ">=17.0.0-dev,<18.0.0"
+
+[tool.ruff]
+line-length = 110
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "I", "UP", "B", "RUF"]
+ignore = [
+    "E501",
+    "W191",
+    "B904",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "tab"

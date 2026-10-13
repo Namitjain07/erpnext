@@ -57,6 +57,10 @@ Running a business is a complex task - handling invoices, tracking stock, managi
 
 - [**Frappe UI**](https://github.com/frappe/frappe-ui): A Vue-based UI library, to provide a modern user interface. The Frappe UI library provides a variety of components that can be used to build single-page applications on top of the Frappe Framework.
 
+## Marketplace Connectors
+
+This fork adds [`marketplace/`](./marketplace/README.md), which installs the Shopify, Amazon and Unicommerce (warehouse management) connectors from [`ecommerce_integrations`](https://github.com/frappe/ecommerce_integrations), and [`flipkart_integration/`](./flipkart_integration/README.md), a Flipkart connector (orders in, stock out) built on top of them.
+
 ## Production Setup
 
 ### Managed Hosting

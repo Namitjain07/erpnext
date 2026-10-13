@@ -58,7 +58,7 @@ for pair in "INR USD 0.012" "USD INR 83"; do
 	bench --site "$SITE" execute frappe.client.insert --kwargs \
 		"{\"doc\": {\"doctype\": \"Currency Exchange\", \"date\": \"2000-01-01\", \"from_currency\": \"$1\", \"to_currency\": \"$2\", \"exchange_rate\": $3, \"for_buying\": 1, \"for_selling\": 1}}"
 done
-bench --site "$SITE" execute frappe.tests.utils.make_test_records --args '["Unicommerce Channel"]' --kwargs '{"commit": true}'
+bench --site "$SITE" execute frappe.tests.utils.make_test_records --args '["Unicommerce Channel"]' --kwargs '{"commit": True}'
 
 echo "==> running the upstream suite"
 bench --site "$SITE" run-tests --app ecommerce_integrations --skip-before-tests

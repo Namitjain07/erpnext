@@ -1,12 +1,15 @@
 import uuid
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import frappe
 from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
+from frappe.handler import run_doc_method
 from frappe.tests import IntegrationTestCase
 from frappe.utils import add_days, today
 
 from flipkart_integration.flipkart import inventory, order, product
+from flipkart_integration.flipkart.api_client import FlipkartAPIError
 from flipkart_integration.flipkart.constants import ORDER_ITEM_ID_FIELD, SHIPMENT_ID_FIELD
 from flipkart_integration.tests.fakes import FakeFlipkart, make_order_item, make_shipment
 
@@ -164,6 +167,66 @@ class TestFlipkartSettings(FlipkartSyncTestCase):
 	def test_warehouse_mappings_are_exposed_both_ways(self):
 		self.assertEqual(self.settings.get_erpnext_to_integration_wh_mapping(), {self.warehouse: LOCATION})
 		self.assertEqual(self.settings.get_integration_to_erpnext_wh_mapping(), {LOCATION: self.warehouse})
+
+
+class TestSettingsActions(FlipkartSyncTestCase):
+	"""The buttons on Flipkart Settings, called the way the browser calls them: through run_doc_method, which
+	passes None for an argument the page did not send."""
+
+	def run_action(self, method: str, **args):
+		request = SimpleNamespace(method="POST", path="/api/method/run_doc_method")
+		with patch.object(frappe.local, "request", request, create=True):
+			return run_doc_method(
+				method=method, dt="Flipkart Settings", dn="Flipkart Settings", args=args or None
+			)
+
+	def test_sync_orders_works_when_the_page_sends_no_arguments(self):
+		with patch.object(frappe, "enqueue") as enqueue:
+			self.run_action("sync_orders_now")
+
+		self.assertIs(enqueue.call_args.kwargs["include_dispatched"], False)
+
+	def test_sync_orders_including_dispatched(self):
+		with patch.object(frappe, "enqueue") as enqueue:
+			self.run_action("sync_orders_now", include_dispatched=1)
+
+		self.assertIs(enqueue.call_args.kwargs["include_dispatched"], True)
+
+	def test_listing_and_stock_actions_queue_their_jobs(self):
+		for method, job in (
+			("sync_listings_now", "flipkart_integration.flipkart.product.sync_listings"),
+			("sync_stock_now", "flipkart_integration.flipkart.inventory.update_inventory_on_flipkart"),
+		):
+			with self.subTest(method=method), patch.object(frappe, "enqueue") as enqueue:
+				self.run_action(method)
+				self.assertEqual(enqueue.call_args.args[0], job)
+
+	def test_a_failed_connection_check_is_a_message_not_a_crash(self):
+		client = MagicMock()
+		client.check_connection.side_effect = FlipkartAPIError(
+			"Flipkart rejected the application credentials (HTTP 401)"
+		)
+
+		with (
+			patch(
+				"flipkart_integration.flipkart.doctype.flipkart_settings.flipkart_settings.get_client",
+				return_value=client,
+			),
+			self.assertRaises(frappe.ValidationError) as caught,
+		):
+			self.run_action("check_connection")
+
+		self.assertIn("rejected the application credentials", str(caught.exception))
+
+	def test_a_good_connection_check_succeeds(self):
+		client = MagicMock()
+		with patch(
+			"flipkart_integration.flipkart.doctype.flipkart_settings.flipkart_settings.get_client",
+			return_value=client,
+		):
+			self.run_action("check_connection")
+
+		client.check_connection.assert_called_once()
 
 
 class TestListingSync(FlipkartSyncTestCase):

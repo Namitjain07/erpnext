@@ -5,8 +5,10 @@ from ecommerce_integrations.controllers.setting import (
 	SettingController,
 )
 from frappe import _
+from frappe.utils import cint
 from frappe.utils.nestedset import get_root_of
 
+from flipkart_integration.flipkart.api_client import FlipkartAPIError
 from flipkart_integration.flipkart.utils import get_client, setup_custom_fields
 
 DEFAULT_CUSTOMER_NAME = "Flipkart Customer"
@@ -89,7 +91,10 @@ class FlipkartSettings(SettingController):
 	@frappe.whitelist()
 	def check_connection(self):
 		self.check_permission("write")
-		get_client(self).check_connection()
+		try:
+			get_client(self).check_connection()
+		except FlipkartAPIError as exc:
+			frappe.throw(exc.message, title=_("Could not connect to Flipkart"))
 		frappe.msgprint(_("Connected to Flipkart."), indicator="green", alert=True)
 
 	@frappe.whitelist()
@@ -104,7 +109,7 @@ class FlipkartSettings(SettingController):
 		frappe.msgprint(_("Listings are being synced in the background."), alert=True)
 
 	@frappe.whitelist()
-	def sync_orders_now(self, include_dispatched: bool | int = False):
+	def sync_orders_now(self, include_dispatched: bool | int | None = False):
 		self.check_permission("write")
 		frappe.enqueue(
 			"flipkart_integration.flipkart.order.sync_new_orders",
@@ -112,7 +117,7 @@ class FlipkartSettings(SettingController):
 			timeout=3600,
 			enqueue_after_commit=True,
 			force=True,
-			include_dispatched=bool(int(include_dispatched)),
+			include_dispatched=bool(cint(include_dispatched)),
 		)
 		frappe.msgprint(_("Orders are being synced in the background."), alert=True)
 

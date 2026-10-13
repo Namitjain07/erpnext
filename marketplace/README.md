@@ -69,7 +69,7 @@ Installed, and inert until you open **Tally Settings**, tick *Enabled* and give 
 
 On a fresh ERPNext 17 site, with all five apps installed by `install.sh`:
 
-- Flipkart: 40 unit tests and 39 site tests, against a fake Flipkart.
+- Flipkart: 40 unit tests and 45 site tests, against a fake Flipkart.
 - `marketplace_guard`: 9 tests, including real HTTP requests.
 - `bwh_shipping`: its own 30 tests pass.
 - `ecommerce_integrations`: the upstream suite passes, 119 tests in 29 modules with none failing (upstream skips 3 of them). It only passes on a fresh database prepared the way its CI prepares one, and only once per database, because the tests commit data that a second run trips over. [`run-upstream-tests.sh`](./run-upstream-tests.sh) does that: it builds a throwaway site, prepares it, runs the suite and drops the site (`MARIADB_ROOT_PASSWORD=... marketplace/run-upstream-tests.sh <bench>`, about five minutes). What it prepares, and why:
@@ -80,6 +80,7 @@ On a fresh ERPNext 17 site, with all five apps installed by `install.sh`:
   - the customer test runs first, because it asks for "the last customer created" and gets someone else's if another test has already created and committed that customer.
 
   None of these are faults in the connectors; they are assumptions the tests make about their database.
+- In a real browser (Chromium driving the desk of a fresh site with every app installed), 38 scripted checks pass. They cover: the Flipkart Settings form, its validation and all five Actions; the Tally, Shiprocket, AfterShip, Shopify, Amazon and Unicommerce screens; Create > Shipment on a Delivery Note; the Tally guard for an API key and for three kinds of login (Administrator, Accounts Manager, Sales User); a Flipkart import run against a fake Flipkart, with the Sales Orders, address, stock sent, error logs from a background worker, and a cancellation. This found two bugs that the automated tests missed, both fixed: **Sync Orders** failed with HTTP 417 when clicked, and imported orders showed no Flipkart order ID on the form or in the list.
 - Nothing has been run against real Shopify, Amazon, Flipkart, Shiprocket, AfterShip, Unicommerce or Tally accounts.
 
 ```bash

@@ -52,7 +52,8 @@ bench --site "$SITE" set-config allow_tests true
 
 echo "==> preparing the database"
 # Test mode matters: upstream's bootstrap creates a user with the password "test", which Frappe only accepts in tests.
-"$BENCH_PATH/env/bin/python" -I - "$BENCH_PATH/sites" "$SITE" <<'PYTHON'
+# Frappe finds its log folder relative to the working directory, which has to be sites/.
+(cd "$BENCH_PATH/sites" && "$BENCH_PATH/env/bin/python" -I - . "$SITE" <<'PYTHON'
 import sys
 
 import frappe
@@ -83,6 +84,7 @@ make_test_records("Unicommerce Channel", commit=True)
 frappe.db.commit()
 frappe.destroy()
 PYTHON
+)
 
 echo "==> running the upstream suite"
 bench --site "$SITE" run-tests --app ecommerce_integrations --skip-before-tests

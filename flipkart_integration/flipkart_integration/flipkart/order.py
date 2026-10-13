@@ -125,16 +125,16 @@ def create_sales_order(settings, client: FlipkartClient, order: FlipkartOrder) -
 		}
 	)
 
-	for line in order.lines:
+	for item_code, row in combine_lines(settings, client, order).items():
 		sales_order.append(
 			"items",
 			{
-				"item_code": resolve_item_code(settings, client, line.sku, line.fsn),
-				"qty": line.quantity,
-				"rate": line.rate,
+				"item_code": item_code,
+				"qty": row["qty"],
+				"rate": row["amount"] / row["qty"],
 				"warehouse": warehouse,
 				"delivery_date": delivery_date,
-				ORDER_ITEM_ID_FIELD: line.order_item_id,
+				ORDER_ITEM_ID_FIELD: ", ".join(row["order_item_ids"]),
 			},
 		)
 
@@ -159,6 +159,19 @@ def create_sales_order(settings, client: FlipkartClient, order: FlipkartOrder) -
 	if settings.submit_sales_orders:
 		sales_order.submit()
 	return sales_order.name
+
+
+def combine_lines(settings, client: FlipkartClient, order: FlipkartOrder) -> dict[str, dict]:
+	"""One row per item. ERPNext refuses the same item on two rows of a Sales Order unless
+	Selling Settings allows it, and a shipment can hold several order items for one SKU."""
+	rows: dict[str, dict] = {}
+	for line in order.lines:
+		item_code = resolve_item_code(settings, client, line.sku, line.fsn)
+		row = rows.setdefault(item_code, {"qty": 0, "amount": 0.0, "order_item_ids": []})
+		row["qty"] += line.quantity
+		row["amount"] += line.rate * line.quantity
+		row["order_item_ids"].append(line.order_item_id)
+	return rows
 
 
 def get_order_warehouse(settings, order: FlipkartOrder) -> str:

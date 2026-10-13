@@ -85,8 +85,8 @@ def setup_custom_fields() -> None:
 			"Sales Order Item": [
 				{
 					"fieldname": ORDER_ITEM_ID_FIELD,
-					"label": "Flipkart Order Item ID",
-					"fieldtype": "Data",
+					"label": "Flipkart Order Item IDs",
+					"fieldtype": "Small Text",
 					"insert_after": "item_code",
 					"read_only": 1,
 					"print_hide": 1,

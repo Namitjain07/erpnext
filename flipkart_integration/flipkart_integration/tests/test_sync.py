@@ -234,6 +234,25 @@ class TestOrderSync(FlipkartSyncTestCase):
 		self.assertEqual(sales_order.grand_total, 500.0)
 		self.assertEqual(sales_order.flipkart_total_price, 290.0)
 
+	def test_order_items_for_the_same_sku_become_one_row(self):
+		sku = self.make_item()
+		shipment = self.add_shipment(
+			items=[
+				make_order_item(sku=sku, order_item_id="OI-1", customer_price=100.0),
+				make_order_item(sku=sku, order_item_id="OI-2", customer_price=100.0),
+				make_order_item(sku=sku, order_item_id="OI-3", quantity=2, customer_price=130.0),
+			]
+		)
+
+		self.sync_orders()
+
+		sales_order = self.sales_order_for(shipment["shipmentId"])
+		self.assertEqual(len(sales_order.items), 1)
+		row = sales_order.items[0]
+		self.assertEqual(row.qty, 4)
+		self.assertEqual(row.get(ORDER_ITEM_ID_FIELD), "OI-1, OI-2, OI-3")
+		self.assertEqual(sales_order.grand_total, 100 + 100 + 2 * 130)
+
 	def test_shipping_address_is_created_for_the_order(self):
 		shipment = self.add_shipment(items=[make_order_item(sku=self.make_item())])
 

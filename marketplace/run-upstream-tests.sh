@@ -100,15 +100,17 @@ echo "==> running the upstream suite, one module at a time"
 failed=()
 total=0
 for module in $MODULES; do
-	output="$(bench --site "$SITE" run-tests --app ecommerce_integrations --skip-before-tests --module "$module" 2>&1 | tr '\r' '\n')" || true
-	summary="$(grep -E '^(Ran|OK|FAILED)' <<<"$output" | tr '\n' ' ')"
-	ran="$(grep -oE '^Ran [0-9]+' <<<"$output" | grep -oE '[0-9]+' || echo 0)"
+	status=0
+	output="$(bench --site "$SITE" run-tests --app ecommerce_integrations --skip-before-tests --module "$module" 2>&1 | tr '\r' '\n')" || status=$?
+	ran="$(grep -oE '^Ran [0-9]+' <<<"$output" | grep -oE '[0-9]+' || true)"
+	ran="${ran:-0}"
 	total=$((total + ran))
-	if grep -q '^OK' <<<"$output"; then
-		echo "  ok      ${module#ecommerce_integrations.}: $summary"
+	name="${module#ecommerce_integrations.}"
+	if [ "$status" -eq 0 ]; then
+		echo "  ok      $name: $ran tests"
 	else
-		echo "  FAILED  ${module#ecommerce_integrations.}: $summary"
-		grep -E '^ ?(ERROR|FAIL)  |AssertionError' <<<"$output" | cut -c1-160 | sed 's/^/            /'
+		echo "  FAILED  $name: $(grep -E '^(Ran|FAILED)' <<<"$output" | tr '\n' ' ' || true)"
+		grep -E '^ ?(ERROR|FAIL)  |AssertionError|Error:' <<<"$output" | cut -c1-160 | sed 's/^/            /' || true
 		failed+=("$module")
 	fi
 done

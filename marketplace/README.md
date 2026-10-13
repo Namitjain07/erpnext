@@ -72,7 +72,14 @@ On a fresh ERPNext 17 site, with all five apps installed by `install.sh`:
 - Flipkart: 40 unit tests and 39 site tests, against a fake Flipkart.
 - `marketplace_guard`: 9 tests, including real HTTP requests.
 - `bwh_shipping`: its own 30 tests pass.
-- `ecommerce_integrations`: 108 of its 119 tests pass and 3 are skipped. The 8 failures are all Unicommerce invoice and delivery-note tests. Part of the cause is the sandbox (ERPNext cannot fetch exchange rates without internet) and part is those tests creating Sales Orders with the same item twice, which ERPNext refuses unless *Allow same Item to be added multiple times in a transaction* is on in Selling Settings. I did not get them fully green, so treat Unicommerce as untested on this version until you have tried it against a real account.
+- `ecommerce_integrations`: the upstream suite passes, 119 tests in 29 modules with none failing (upstream skips 3 of them). It only passes on a fresh database prepared the way its CI prepares one, and only once per database, because the tests commit data that a second run trips over. [`run-upstream-tests.sh`](./run-upstream-tests.sh) does that: it builds a throwaway site, prepares it, runs the suite and drops the site (`MARIADB_ROOT_PASSWORD=... marketplace/run-upstream-tests.sh <bench>`, about five minutes). What it prepares, and why:
+  - the company "Wind Power LLC" is created as the Indian (INR) one before anything else, because ERPNext's own test records define a US-dollar company with the same name and whichever exists first wins;
+  - *Allow same Item to be added multiple times in a transaction* is switched on, because Unicommerce sends one order row per unit and ERPNext otherwise refuses the second row;
+  - INR/USD exchange rates are added, because ERPNext otherwise fetches them from the internet;
+  - the Unicommerce Channel test records are committed, because Frappe 17 rolls each test class back;
+  - the customer test runs first, because it asks for "the last customer created" and gets someone else's if another test has already created and committed that customer.
+
+  None of these are faults in the connectors; they are assumptions the tests make about their database.
 - Nothing has been run against real Shopify, Amazon, Flipkart, Shiprocket, AfterShip, Unicommerce or Tally accounts.
 
 ```bash

@@ -134,6 +134,17 @@ class TestFlipkartSettings(FlipkartSyncTestCase):
 			frappe.db.exists("Custom Field", {"dt": "Sales Order Item", "fieldname": ORDER_ITEM_ID_FIELD})
 		)
 
+	def test_flipkart_order_fields_are_on_the_details_tab_for_flipkart_orders_only(self):
+		order_id = frappe.get_doc("Custom Field", {"dt": "Sales Order", "fieldname": "flipkart_order_id"})
+		self.assertEqual(order_id.insert_after, "delivery_date")
+		self.assertEqual(order_id.depends_on, "eval:doc.flipkart_order_id")
+		self.assertTrue(order_id.in_list_view)
+		self.assertTrue(order_id.in_standard_filter)
+
+		for fieldname in ("flipkart_shipment_id", "flipkart_total_price"):
+			field = frappe.get_doc("Custom Field", {"dt": "Sales Order", "fieldname": fieldname})
+			self.assertEqual(field.depends_on, "eval:doc.flipkart_order_id", fieldname)
+
 	def test_a_location_cannot_be_mapped_twice(self):
 		settings = frappe.get_doc("Flipkart Settings")
 		settings.append(

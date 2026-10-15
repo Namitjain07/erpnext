@@ -104,11 +104,10 @@ class FlipkartClient:
 		payload = _json_or_none(response)
 		token = payload.get("access_token") if isinstance(payload, dict) else None
 		if response.status_code != 200 or not token:
-			raise FlipkartAPIError(
-				f"Flipkart rejected the application credentials (HTTP {response.status_code})",
-				status_code=response.status_code,
-				payload=payload,
-			)
+			message = f"Flipkart rejected the application credentials (HTTP {response.status_code})"
+			if isinstance(payload, dict) and (reason := _error_text(payload, response).strip()):
+				message = f"{message}: {reason}"
+			raise FlipkartAPIError(message, status_code=response.status_code, payload=payload)
 
 		expires_in = float(payload.get("expires_in") or DEFAULT_TOKEN_TTL_SECONDS)
 		self._token = token

@@ -43,6 +43,37 @@ class TestAuthentication(unittest.TestCase):
 		self.assertEqual(call["params"], {"grant_type": "client_credentials", "scope": "Seller_Api"})
 		self.assertEqual(call["auth"], ("app-id", "app-secret"))
 
+	def test_a_rejected_token_request_passes_on_flipkarts_reason(self):
+		session = FakeSession(
+			[
+				FakeResponse(
+					401,
+					{
+						"error": "unauthorized",
+						"error_description": "Self Access Application is not in Approved state ",
+					},
+				)
+			]
+		)
+
+		with self.assertRaises(FlipkartAPIError) as ctx:
+			make_client(session).authenticate()
+
+		self.assertEqual(ctx.exception.status_code, 401)
+		self.assertEqual(
+			ctx.exception.message,
+			"Flipkart rejected the application credentials (HTTP 401): "
+			"Self Access Application is not in Approved state",
+		)
+
+	def test_a_rejected_token_request_without_a_reason_keeps_the_plain_message(self):
+		session = FakeSession([FakeResponse(401)])
+
+		with self.assertRaises(FlipkartAPIError) as ctx:
+			make_client(session).authenticate()
+
+		self.assertEqual(ctx.exception.message, "Flipkart rejected the application credentials (HTTP 401)")
+
 	def test_token_is_reused_until_close_to_expiry(self):
 		clock = Clock()
 		session = FakeSession([token_response("tok-1", expires_in=1000), token_response("tok-2")])

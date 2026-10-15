@@ -1,0 +1,260 @@
+{
+ "actions": [],
+ "creation": "2026-10-13 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enable_flipkart",
+  "connection_section",
+  "app_id",
+  "app_secret",
+  "column_break_connection",
+  "api_base_url",
+  "defaults_section",
+  "company",
+  "default_customer",
+  "customer_group",
+  "column_break_defaults",
+  "item_group",
+  "default_warehouse",
+  "sales_taxes_template",
+  "shipping_charge_account",
+  "orders_section",
+  "enable_order_sync",
+  "order_sync_frequency",
+  "sync_orders_from",
+  "column_break_orders",
+  "submit_sales_orders",
+  "create_missing_items",
+  "price_basis",
+  "last_order_sync",
+  "inventory_section",
+  "enable_inventory_sync",
+  "inventory_sync_frequency",
+  "last_inventory_sync",
+  "warehouse_mapping"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "enable_flipkart",
+   "fieldtype": "Check",
+   "label": "Enable Flipkart"
+  },
+  {
+   "depends_on": "enable_flipkart",
+   "fieldname": "connection_section",
+   "fieldtype": "Section Break",
+   "label": "Connection"
+  },
+  {
+   "description": "From the Flipkart Seller API Developer Admin portal (Application ID).",
+   "fieldname": "app_id",
+   "fieldtype": "Data",
+   "label": "Application ID",
+   "mandatory_depends_on": "enable_flipkart"
+  },
+  {
+   "fieldname": "app_secret",
+   "fieldtype": "Password",
+   "label": "Application Secret",
+   "mandatory_depends_on": "enable_flipkart"
+  },
+  {
+   "fieldname": "column_break_connection",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "https://api.flipkart.net",
+   "description": "Leave as is unless Flipkart gave you a different host, for example for a sandbox.",
+   "fieldname": "api_base_url",
+   "fieldtype": "Data",
+   "label": "API Base URL"
+  },
+  {
+   "depends_on": "enable_flipkart",
+   "fieldname": "defaults_section",
+   "fieldtype": "Section Break",
+   "label": "ERPNext Defaults"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "mandatory_depends_on": "enable_flipkart",
+   "options": "Company"
+  },
+  {
+   "description": "Flipkart does not share buyer contact details, so every order is booked against this customer. A customer called Flipkart Customer is created if you leave it empty.",
+   "fieldname": "default_customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "depends_on": "eval:!doc.default_customer",
+   "description": "Used only when the customer is created for you.",
+   "fieldname": "customer_group",
+   "fieldtype": "Link",
+   "label": "Customer Group",
+   "options": "Customer Group"
+  },
+  {
+   "fieldname": "column_break_defaults",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "For items created from Flipkart listings.",
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "label": "Item Group",
+   "options": "Item Group"
+  },
+  {
+   "description": "Used for orders when the Flipkart location has no warehouse below, or maps to a group warehouse. It must not be a group warehouse.",
+   "fieldname": "default_warehouse",
+   "fieldtype": "Link",
+   "label": "Default Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "description": "Applied to every order. If the prices on Flipkart include GST, use a template whose rows are marked Included in Print Rate.",
+   "fieldname": "sales_taxes_template",
+   "fieldtype": "Link",
+   "label": "Sales Taxes and Charges Template",
+   "options": "Sales Taxes and Charges Template"
+  },
+  {
+   "description": "Shipping charged to the buyer is added to the order against this account. Left empty, it is ignored.",
+   "fieldname": "shipping_charge_account",
+   "fieldtype": "Link",
+   "label": "Shipping Charge Account",
+   "options": "Account"
+  },
+  {
+   "depends_on": "enable_flipkart",
+   "fieldname": "orders_section",
+   "fieldtype": "Section Break",
+   "label": "Orders"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_order_sync",
+   "fieldtype": "Check",
+   "label": "Sync Orders from Flipkart"
+  },
+  {
+   "default": "15",
+   "depends_on": "enable_order_sync",
+   "description": "In minutes.",
+   "fieldname": "order_sync_frequency",
+   "fieldtype": "Int",
+   "label": "Sync Frequency"
+  },
+  {
+   "default": "Today",
+   "depends_on": "enable_order_sync",
+   "description": "Orders placed before this date are never imported.",
+   "fieldname": "sync_orders_from",
+   "fieldtype": "Date",
+   "label": "Import Orders Placed From",
+   "mandatory_depends_on": "eval:doc.enable_flipkart && doc.enable_order_sync"
+  },
+  {
+   "fieldname": "column_break_orders",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "depends_on": "enable_order_sync",
+   "description": "Submitting reserves the stock. Leave off to review orders as drafts first.",
+   "fieldname": "submit_sales_orders",
+   "fieldtype": "Check",
+   "label": "Submit Sales Orders"
+  },
+  {
+   "default": "0",
+   "depends_on": "enable_order_sync",
+   "description": "Create an item when an order or listing has a SKU that does not exist in ERPNext. Otherwise the order waits and the failure is logged.",
+   "fieldname": "create_missing_items",
+   "fieldtype": "Check",
+   "label": "Create Missing Items"
+  },
+  {
+   "default": "Per Unit",
+   "depends_on": "enable_order_sync",
+   "description": "Whether the price Flipkart sends for an order item is for one unit or for the whole quantity. Check one order with a quantity above 1 against the Flipkart panel.",
+   "fieldname": "price_basis",
+   "fieldtype": "Select",
+   "label": "Flipkart Prices Are",
+   "options": "Per Unit\nPer Order Item"
+  },
+  {
+   "fieldname": "last_order_sync",
+   "fieldtype": "Datetime",
+   "label": "Last Order Sync",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "enable_flipkart",
+   "fieldname": "inventory_section",
+   "fieldtype": "Section Break",
+   "label": "Inventory"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_inventory_sync",
+   "fieldtype": "Check",
+   "label": "Sync Stock to Flipkart"
+  },
+  {
+   "default": "15",
+   "depends_on": "enable_inventory_sync",
+   "description": "In minutes.",
+   "fieldname": "inventory_sync_frequency",
+   "fieldtype": "Int",
+   "label": "Sync Frequency"
+  },
+  {
+   "fieldname": "last_inventory_sync",
+   "fieldtype": "Datetime",
+   "label": "Last Stock Sync",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "enable_flipkart",
+   "description": "Stock of the ERPNext warehouse (less reserved quantity) is sent to the matching Flipkart location. The location ID is in the Flipkart seller panel under Manage Profile > Manage Location.",
+   "fieldname": "warehouse_mapping",
+   "fieldtype": "Table",
+   "label": "Warehouse Mapping",
+   "options": "Flipkart Warehouse Mapping"
+  }
+ ],
+ "icon": "fa fa-shopping-cart",
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-10-13 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Flipkart",
+ "name": "Flipkart Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

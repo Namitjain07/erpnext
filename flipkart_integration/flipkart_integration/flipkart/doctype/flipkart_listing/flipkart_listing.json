@@ -1,0 +1,127 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "autoname": "field:sku",
+ "creation": "2026-10-15 15:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "sku",
+  "fsn",
+  "product_title",
+  "listing_state",
+  "column_break_mapping",
+  "erpnext_item",
+  "item_name",
+  "mapping_source",
+  "last_seen"
+ ],
+ "fields": [
+  {
+   "fieldname": "sku",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Flipkart SKU",
+   "reqd": 1,
+   "set_only_once": 1,
+   "unique": 1
+  },
+  {
+   "description": "Flipkart's product ID for the listing. Stock is sent to Flipkart under it.",
+   "fieldname": "fsn",
+   "fieldtype": "Data",
+   "label": "Flipkart Product ID (FSN)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "product_title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Name on Flipkart",
+   "read_only": 1
+  },
+  {
+   "fieldname": "listing_state",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Listing State",
+   "options": "\nACTIVE\nINACTIVE",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_mapping",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "The item in ERPNext that this Flipkart SKU stands for. Orders for the SKU are booked against it, and its stock is sent to Flipkart under this SKU.",
+   "fieldname": "erpnext_item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "ERPNext Item",
+   "options": "Item"
+  },
+  {
+   "fetch_from": "erpnext_item.item_name",
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Name in ERPNext",
+   "read_only": 1
+  },
+  {
+   "description": "Automatic: the SKU is the Item Code, or the item was created from the listing. Manual: chosen here.",
+   "fieldname": "mapping_source",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Mapped By",
+   "options": "\nAutomatic\nManual",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_seen",
+   "fieldtype": "Datetime",
+   "label": "Last Seen on Flipkart",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-15 15:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Flipkart",
+ "name": "Flipkart Listing",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "export": 1,
+   "import": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock Manager",
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "product_title,erpnext_item,fsn",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "product_title",
+ "track_changes": 1
+}

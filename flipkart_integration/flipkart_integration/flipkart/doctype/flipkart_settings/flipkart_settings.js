@@ -12,6 +12,14 @@ frappe.ui.form.on("Flipkart Settings", {
 	refresh(frm) {
 		if (!frm.doc.enable_flipkart || frm.is_dirty()) return;
 
+		frm.add_custom_button(
+			__("Map Products"),
+			() => {
+				frappe.route_options = { erpnext_item: ["is", "not set"] };
+				frappe.set_route("List", "Flipkart Listing");
+			},
+			__("Actions")
+		);
 		frm.add_custom_button(__("Check Connection"), () => frm.call("check_connection"), __("Actions"));
 		frm.add_custom_button(__("Sync Listings"), () => frm.call("sync_listings_now"), __("Actions"));
 		frm.add_custom_button(__("Sync Orders"), () => frm.call("sync_orders_now"), __("Actions"));

@@ -5,6 +5,7 @@ from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_integration
 	create_log,
 )
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+from frappe.utils import strip_html
 
 from flipkart_integration.flipkart.api_client import FlipkartClient
 from flipkart_integration.flipkart.constants import (
@@ -121,10 +122,10 @@ def log_sync_error(method: str, exception: Exception, request_data=None) -> None
 		)
 		return
 
+	# Same text as create_log writes the first time: plain, without the markup of a dialog message.
+	message = strip_html(getattr(exception, "message", None) or str(exception))
 	frappe.db.set_value(
-		LOG_DOCTYPE,
-		existing,
-		{"message": str(exception)[:140], "traceback": frappe.get_traceback()},
+		LOG_DOCTYPE, existing, {"message": message[:140], "traceback": frappe.get_traceback()}
 	)
 	frappe.db.commit()
 

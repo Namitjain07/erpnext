@@ -20,7 +20,11 @@ from flipkart_integration.flipkart.constants import (
 	SHIPMENT_ID_FIELD,
 )
 from flipkart_integration.flipkart.mapping import FlipkartOrder, build_shipment_filter, normalize_shipment
-from flipkart_integration.flipkart.product import resolve_item_code
+from flipkart_integration.flipkart.product import (
+	UnmappedProductError,
+	record_unmapped,
+	resolve_item_code,
+)
 from flipkart_integration.flipkart.utils import (
 	get_client,
 	get_settings,
@@ -86,6 +90,8 @@ def _import_shipment(settings, client: FlipkartClient, order: FlipkartOrder) -> 
 		sales_order = create_sales_order(settings, client, order)
 	except Exception as exc:
 		log_sync_error(method, exc, request_data=json.dumps(asdict(order), default=str, indent=2))
+		if isinstance(exc, UnmappedProductError):
+			record_unmapped(exc.products)
 		return False
 
 	resolve_sync_errors(method)
@@ -165,12 +171,22 @@ def combine_lines(settings, client: FlipkartClient, order: FlipkartOrder) -> dic
 	"""One row per item. ERPNext refuses the same item on two rows of a Sales Order unless
 	Selling Settings allows it, and a shipment can hold several order items for one SKU."""
 	rows: dict[str, dict] = {}
+	unmapped: list[tuple[str, str]] = []
 	for line in order.lines:
-		item_code = resolve_item_code(settings, client, line.sku, line.fsn)
+		try:
+			item_code = resolve_item_code(settings, client, line.sku, line.fsn)
+		except UnmappedProductError as exc:
+			# Collect every missing SKU, so one failed run lists them all instead of one per run.
+			unmapped.extend(product for product in exc.products if product not in unmapped)
+			continue
+
 		row = rows.setdefault(item_code, {"qty": 0, "amount": 0.0, "order_item_ids": []})
 		row["qty"] += line.quantity
 		row["amount"] += line.rate * line.quantity
 		row["order_item_ids"].append(line.order_item_id)
+
+	if unmapped:
+		raise UnmappedProductError(unmapped)
 	return rows
 
 

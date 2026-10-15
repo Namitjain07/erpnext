@@ -51,6 +51,21 @@ Stock sent to a channel is what is **available**: actual quantity less what open
 
 The Flipkart connector's multi-warehouse behaviour is covered by tests: separate locations, only the changed warehouse being sent again, transfers between warehouses, reservations per warehouse, and group warehouses.
 
+## Matching products across platforms
+
+A product is called different things on each platform, so every connector needs to know which ERPNext item an order line stands for. ERPNext's Item is the hub; each platform's SKU is mapped to it, and that is what lets the same product be sold on several platforms from the same stock.
+
+| Platform | An order line is matched to an item by | To map one by hand |
+| --- | --- | --- |
+| Flipkart | the mapping on its **Flipkart Listing**, else an Item whose Item Code is the SKU | choose the **ERPNext Item** on the Flipkart Listing; see [`flipkart_integration/README.md`](../flipkart_integration/README.md#mapping-products). Tested. |
+| Shopify | an **Ecommerce Item** with the line's SKU, else with its Shopify product and variant ID | open **Ecommerce Item > New**: Integration *Shopify*, the ERPNext Item, Integration Item Code the Shopify product ID, and the SKU (and Variant ID when the product has variants) |
+| Unicommerce | an **Ecommerce Item** whose Integration Item Code is the Unicommerce SKU | an Ecommerce Item with Integration *Unicommerce*, the ERPNext Item, and Integration Item Code the Unicommerce SKU |
+| Amazon | the Item field chosen in **Amazon SP API Settings > Amazon Fields Map** (for example Seller SKU = Item Code). Ecommerce Item is written for Amazon items but never read when an order arrives | no mapping table: put the Amazon SKU into the Item field you matched on, such as a custom *Amazon SKU* field on Item, and match on that |
+
+The Shopify, Unicommerce and Amazon rows come from reading those connectors' code, not from running an order through them, and nothing here changes them. Only Flipkart has a mapping screen, because it is the one connector written here.
+
+The report **Item Platform Mapping** (find it in the search bar) shows each ERPNext item with its SKU on every platform that uses Ecommerce Item records, which is Flipkart, Shopify, Unicommerce and, for items it created, Amazon. Its **Not Linked On** filter lists the enabled items that have no link on one platform, which is the quickest way to see what has not been listed or mapped there yet.
+
 ## Shipping labels
 
 Open a Delivery Note and choose **Create > Shipment** (added by `bwh_shipping`): it drafts a Shipping Request, which you book with the provider (Shiprocket or AfterShip) to get the AWB and label. Tracking comes back by webhook. Set up a provider first under **Shipping Provider Profile**; see the app's [documentation](https://docs.bwh.tech/bwh-shipping/get-started/overview). Labels for Flipkart orders still come from Flipkart; the Flipkart connector does not create them.
@@ -69,7 +84,7 @@ Installed, and inert until you open **Tally Settings**, tick *Enabled* and give 
 
 On a fresh ERPNext 17 site, with all five apps installed by `install.sh`:
 
-- Flipkart: 42 unit tests and 45 site tests, against a fake Flipkart.
+- Flipkart: 42 unit tests and 77 site tests, against a fake Flipkart. 32 of the site tests cover product mapping and the Item Platform Mapping report.
 - `marketplace_guard`: 9 tests, including real HTTP requests.
 - `bwh_shipping`: its own 30 tests pass.
 - `ecommerce_integrations`: the upstream suite passes, 119 tests in 29 modules with none failing (upstream skips 3 of them). It only passes on a fresh database prepared the way its CI prepares one, and only once per database, because the tests commit data that a second run trips over. [`run-upstream-tests.sh`](./run-upstream-tests.sh) does that: it builds a throwaway site, prepares it, runs the suite and drops the site (`MARIADB_ROOT_PASSWORD=... marketplace/run-upstream-tests.sh <bench>`, about five minutes). What it prepares, and why:
@@ -80,7 +95,7 @@ On a fresh ERPNext 17 site, with all five apps installed by `install.sh`:
   - the customer test runs first, because it asks for "the last customer created" and gets someone else's if another test has already created and committed that customer.
 
   None of these are faults in the connectors; they are assumptions the tests make about their database.
-- In a real browser (Chromium driving the desk of a fresh site with every app installed), 38 scripted checks pass. They cover: the Flipkart Settings form, its validation and all five Actions; the Tally, Shiprocket, AfterShip, Shopify, Amazon and Unicommerce screens; Create > Shipment on a Delivery Note; the Tally guard for an API key and for three kinds of login (Administrator, Accounts Manager, Sales User); a Flipkart import run against a fake Flipkart, with the Sales Orders, address, stock sent, error logs from a background worker, and a cancellation. This found two bugs that the automated tests missed, both fixed: **Sync Orders** failed with HTTP 417 when clicked, and imported orders showed no Flipkart order ID on the form or in the list.
+- In a real browser (Chromium driving the desk of a fresh site with every app installed), 56 scripted checks pass. They cover: the Flipkart Settings form, its validation and all five Actions; the Tally, Shiprocket, AfterShip, Shopify, Amazon and Unicommerce screens; Create > Shipment on a Delivery Note; the Tally guard for an API key and for three kinds of login (Administrator, Accounts Manager, Sales User); a Flipkart import run against a fake Flipkart, with the Sales Orders, address, stock sent, error logs from a background worker, and a cancellation. This found two bugs that the automated tests missed, both fixed: **Sync Orders** failed with HTTP 417 when clicked, and imported orders showed no Flipkart order ID on the form or in the list. 18 of the 56 are for product mapping: the Flipkart Listing list and form, mapping and re-mapping an item, a SKU containing a slash, spaces and `#`, the duplicate-product-ID refusal, an order that waits for its SKU to be mapped and is then imported, stock sent under the Flipkart SKU, the Item Platform Mapping report and its filter, and who may map (a Stock Manager can, a Sales User cannot).
 - Nothing has been run against real Shopify, Amazon, Flipkart, Shiprocket, AfterShip, Unicommerce or Tally accounts.
 
 ```bash

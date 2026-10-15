@@ -69,7 +69,7 @@ Installed, and inert until you open **Tally Settings**, tick *Enabled* and give 
 
 On a fresh ERPNext 17 site, with all five apps installed by `install.sh`:
 
-- Flipkart: 40 unit tests and 45 site tests, against a fake Flipkart.
+- Flipkart: 42 unit tests and 45 site tests, against a fake Flipkart.
 - `marketplace_guard`: 9 tests, including real HTTP requests.
 - `bwh_shipping`: its own 30 tests pass.
 - `ecommerce_integrations`: the upstream suite passes, 119 tests in 29 modules with none failing (upstream skips 3 of them). It only passes on a fresh database prepared the way its CI prepares one, and only once per database, because the tests commit data that a second run trips over. [`run-upstream-tests.sh`](./run-upstream-tests.sh) does that: it builds a throwaway site, prepares it, runs the suite and drops the site (`MARIADB_ROOT_PASSWORD=... marketplace/run-upstream-tests.sh <bench>`, about five minutes). What it prepares, and why:
